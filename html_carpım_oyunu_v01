@@ -1,0 +1,259 @@
+<!DOCTYPE html> 
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>🧮 Eğlenceli Çarpım Oyunu</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+
+<style>
+body {
+    margin: 0;
+    height: 100vh;
+    font-family: 'Comic Neue', cursive;
+    background-color: #1f5f3f;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.15) 2px, transparent 3px),
+        radial-gradient(circle at 70% 60%, rgba(255,255,255,0.15) 2px, transparent 3px),
+        repeating-linear-gradient(
+            0deg,
+            rgba(255,255,255,0.05),
+            rgba(255,255,255,0.05) 2px,
+            transparent 2px,
+            transparent 36px
+        );
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.game {
+    background: rgba(0,0,0,0.35);
+    padding: 45px;
+    border-radius: 30px;
+    width: 620px;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    z-index: 2;
+}
+
+h1 { font-size: 42px; }
+
+.score {
+    display: flex;
+    justify-content: space-between;
+    font-size: 24px;
+}
+
+.question {
+    font-size: 52px;
+    margin: 25px 0;
+}
+
+input {
+    font-size: 34px;
+    width: 180px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 14px;
+    border: none;
+}
+
+button {
+    margin-top: 20px;
+    font-size: 30px;
+    padding: 12px 45px;
+    border-radius: 18px;
+    border: none;
+    background: #ffcc00;
+    cursor: pointer;
+}
+
+.lives {
+    margin-top: 18px;
+    font-size: 30px;
+}
+
+.message.wrong {
+    margin-top: 20px;
+    background: #fff;
+    color: #c62828;
+    padding: 22px;
+    border-radius: 22px;
+    font-size: 40px;
+}
+
+.message.correct {
+    margin-top: 15px;
+    font-size: 28px;
+    color: #d4ff00;
+}
+
+/* 🍬🎁 DÜŞEN ŞEKER & HEDİYE */
+.drop {
+    position: fixed;
+    top: -40px;
+    font-size: 34px;
+    animation: dropFall 2s linear forwards;
+    z-index: 1;
+}
+
+@keyframes dropFall {
+    to {
+        transform: translateY(110vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* ❤️ CAN KAZANMA MESAJI */
+.life-message {
+    position: fixed;
+    top: 35%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffeb3b;
+    color: #2e7d32;
+    padding: 25px 45px;
+    border-radius: 25px;
+    font-size: 42px;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+    z-index: 10;
+    animation: pop 2.5s ease forwards;
+}
+
+@keyframes pop {
+    0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+    30% { transform: translateX(-50%) scale(1.1); opacity: 1; }
+    100% { transform: translateX(-50%) scale(1); opacity: 0; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+    <h1>🧮 Çarpım Oyunu</h1>
+
+    <div class="score">
+        <div>⭐ Puan: <span id="score">0</span></div>
+        <div>🏆 Rekor: <span id="highScore">0</span></div>
+    </div>
+
+    <div class="question" id="question"></div>
+
+    <input type="number" id="answer">
+    <br>
+    <button onclick="checkAnswer()">Cevapla</button>
+
+    <div class="lives">❤️ Can: <span id="lives">3</span></div>
+    <div id="message"></div>
+</div>
+
+<script>
+let score = 0, lives = 3, correctCount = 0;
+let num1, num2;
+let retryQueue = [];
+
+let highScore = Number(localStorage.getItem("highScore")) || 0;
+document.getElementById("highScore").innerText = highScore;
+
+function candyRain() {
+    const items = ["🍬","🍭","🎁","🍫","⭐","🧸","🍬","🍭","🎁","🍫","⭐","🧸","🍬","🍭","🎁","🍫","⭐","🧸"];
+    for (let i = 0; i < 30; i++) {
+        const el = document.createElement("div");
+        el.className = "drop";
+        el.innerText = items[Math.floor(Math.random() * items.length)];
+        el.style.left = Math.random() * 100 + "vw";
+        el.style.animationDuration = (1.5 + Math.random()) + "s";
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2200);
+    }
+}
+
+function showLifeMessage() {
+    const msg = document.createElement("div");
+    msg.className = "life-message";
+    msg.innerText = "🎉 Tebrikler! Can kazandın ❤️";
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 1500);
+}
+
+function newQuestion() {
+
+    if (retryQueue.length && retryQueue[0].delay === 0) {
+        const q = retryQueue.shift();
+        num1 = q.a;
+        num2 = q.b;
+    } else {
+        num1 = Math.floor(Math.random() * 10) + 1;
+        num2 = Math.floor(Math.random() * 10) + 1;
+    }
+
+    retryQueue.forEach(q => q.delay--);
+
+    document.getElementById("question").innerText = `${num1} × ${num2} = ?`;
+    answer.value = "";
+    answer.focus();
+}
+
+function checkAnswer() {
+    const msg = document.getElementById("message");
+    msg.className = "message";
+
+    const userAnswer = Number(answer.value);
+    const correct = num1 * num2;
+
+    if (userAnswer === correct) {
+        score += 5;
+        correctCount++;
+        candyRain();
+
+        msg.className = "message correct";
+        msg.innerText = "🎉 Aferin! Doğru cevap!";
+
+        if (correctCount % 5 === 0 && lives < 5) {
+            lives++;
+            document.getElementById("lives").innerText = lives;
+            showLifeMessage();
+        }
+    } else {
+        lives--;
+        document.getElementById("lives").innerText = lives;
+
+        retryQueue.push({ a: num1, b: num2, delay: 2 });
+
+        msg.className = "message wrong";
+        msg.innerHTML = `❌ YANLIŞ<br><strong>${num1} × ${num2} = ${correct}</strong>`;
+
+        if (lives === 0) return gameOver();
+    }
+
+    document.getElementById("score").innerText = score;
+
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highScore", highScore);
+        document.getElementById("highScore").innerText = highScore;
+    }
+
+    setTimeout(newQuestion, 1500);
+}
+
+function gameOver() {
+    document.getElementById("message").innerHTML = "💀 Oyun Bitti! Baştan başlıyoruz...";
+    score = 0;
+    lives = 3;
+    correctCount = 0;
+    retryQueue = [];
+    document.getElementById("score").innerText = 0;
+    document.getElementById("lives").innerText = 3;
+    setTimeout(newQuestion, 1500);
+}
+
+newQuestion();
+</script>
+
+</body>
+</html>
